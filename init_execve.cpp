@@ -89,9 +89,6 @@ int main(int argc, char ** argv)
 	execvePtr = (void *) (((unsigned long) execvePtr) + ((unsigned long) initBase));
 	
 	printf("execvePtr: %X\n", execvePtr);
-
-	execvePtr = (void *) (((unsigned long) execvePtr) + sizeof(execve_code));
-	execvePtr = (void *) (((unsigned long) execvePtr) + sizeof(execve_code));
 	
 	struct pt_regs regs;
 	memset(&regs, 0, sizeof(regs));
@@ -118,15 +115,21 @@ int main(int argc, char ** argv)
 	
 	pushRegistersToStack(&regs);
 	
+	// START - This part is wrong, awful and crap!
+	
+	execvePtr = (void *) (((unsigned long) execvePtr) + sizeof(execve_code));
+	
 	unsigned long POP_R0_PC = 0xE8DBFFFF; //POP {R0 - PC} - LDMFD SP!, {R0-PC}
 	ProcessWrite(INIT_PID, execvePtr, &POP_R0_PC, 4); //Then execve gets called in /init, it will crash, and kenel will panic.
 	
 	regs.ARM_pc = ((unsigned long) execvePtr);
 	
+	// END - This part is wrong, awful and crap!
+	
 	printf("new PC: %X.\n", regs.ARM_pc);
-	//ptrace(PTRACE_SETREGS, INIT_PID, NULL, &regs);
+	ptrace(PTRACE_SETREGS, INIT_PID, NULL, &regs);
 
 	printf("Detaching...\n");
-	//ptrace(PTRACE_DETACH, INIT_PID, NULL, NULL);
+	ptrace(PTRACE_DETACH, INIT_PID, NULL, NULL);
 	return 0;
 }
